@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel成绩分析工具</title>
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>-->
+    <script src="./js/xlsx.full.min.js"></script>
+    <script src="./js/chart.js"></script>
+    <script src="./js/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: #4a5568;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #e2e8f0;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 40px;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            max-width: 500px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            background: #ebf4ff;
+            border-color: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .drop-zone i {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .drop-text {
+            font-size: 1.2em;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .browse-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .browse-btn:hover {
+            background: #5a67d8;
+        }
+
+        .copy-btn {
+            background: #48bb78;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+            margin: 10px 5px;
+        }
+
+        .copy-btn:hover {
+            background: #38a169;
+        }
+
+        .copy-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            padding: 30px;
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .sheet-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .sheet-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .sheet-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: -20px -20px 20px -20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .a-grade { color: #e53e3e; }
+        .b-grade { color: #dd6b20; }
+        .c-grade { color: #d69e2e; }
+        .excellent { color: #38a169; }
+        .pass { color: #3182ce; }
+        .fail { color: #a0aec0; }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary-table th {
+            background: #4a5568;
+            color: white;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        .summary-table tr:nth-child(even) {
+            background: #f7fafc;
+        }
+
+        .summary-table tr:hover {
+            background: #ebf4ff;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .chart-container {
+            margin: 40px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #e53e3e;
+            text-align: center;
+            padding: 20px;
+            background: #fed7d7;
+            border-radius: 8px;
+            margin: 20px;
+            display: none;
+        }
+
+        .success {
+            color: #38a169;
+            text-align: center;
+            padding: 15px;
+            background: #f0fff4;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .instructions {
+            background: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .instructions h3 {
+            color: #dd6b20;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .instructions li:before {
+            content: "•";
+            color: #dd6b20;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .button-group {
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Excel成绩分析工具</h1>
+            <p class="description">拖拽Excel文件即可快速分析各班级成绩统计</p>
+        </header>
+
+        <div class="upload-section">
+            <div class="instructions">
+                <h3>使用说明</h3>
+                <ul>
+                    <li>Excel文件需包含多个sheet页</li>
+                    <li>每个sheet页必须包含：序号、姓名、分数 三列</li>
+                    <li>支持 .xlsx 和 .xls 格式文件</li>
+                    <li>直接拖拽文件到下方区域或点击选择文件</li>
+                </ul>
+            </div>
+            <div style="margin-top:20px; text-align:center;">
+                <label>总分：</label><input id="totalScore" type="number" value="60" style="width:80px; margin-right:10px;">
+                <label>A档：</label><input id="aScore" type="number" value="54" style="width:80px; margin-right:10px;">
+                <label>B档：</label><input id="bScore" type="number" value="48" style="width:80px; margin-right:10px;">
+                <label>C档：</label><input id="cScore" type="number" value="36" style="width:80px;">
+            </div>
+            <div style="text-align:center; margin-top:10px;">
+                <button class="browse-btn" onclick="updateGradeConfig()">⚙️ 更新分档设置</button>
+            </div>
+
+            <div class="drop-zone" id="dropZone">
+                <div>📁</div>
+                <div class="drop-text">拖拽Excel文件到此处</div>
+                <div>或</div>
+                <button class="browse-btn" onclick="document.getElementById('fileInput').click()">
+                    选择文件
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>正在分析文件，请稍候...</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results-section" id="resultsSection">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #2d3748;">📈 详细分析结果</h2>
+
+            <div class="results-grid" id="resultsGrid">
+                <!-- 详细结果将通过JavaScript动态生成 -->
+            </div>
+
+            <h2 style="text-align: center; margin: 30px 0 20px 0; color: #2d3748;">📋 汇总统计表</h2>
+
+            <div class="table-container">
+                <table class="summary-table" id="summaryTable">
+                    <thead>
+                        <tr id="summaryHeader">
+                            <th>班级</th>
+                            <th>参考人数</th>
+                            <th>总分</th>
+                            <th>平均分</th>
+                            <th>A[45-50]</th>
+                            <th>B[40-45)</th>
+                            <th>C[30-40)</th>
+                            <th>不及格</th>
+                            <th>优秀率</th>
+                            <th>及格率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 汇总数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="button-group">
+                <div class="success" id="success"></div>
+                <button class="copy-btn" id="copyBtn" onclick="copyResultsToClipboard()" disabled>
+                    📋 复制汇总结果
+                </button>
+                <button class="browse-btn" onclick="resetAnalysis()">
+                    🔄 重新分析
+                </button>
+            </div>
+
+            <!-- 图表区域 -->
+            <div class="charts-grid" id="chartsContainer">
+                <!-- 图表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const summaryTable = document.getElementById('summaryTable');
+        const copyBtn = document.getElementById('copyBtn');
+        const chartsContainer = document.getElementById('chartsContainer');
+
+        let analysisResults = [];
+        let charts = [];
+
+        let gradeConfig = {
+            total: 50,
+            aMin: 45,
+            bMin: 40,
+            cMin: 30
+        };
+
+        // 注册数据标签插件
+        Chart.register(ChartDataLabels);
+
+        // 拖拽事件处理
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('dragover');
+        }
+
+        // 文件拖放处理
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFiles(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFiles(files[0]);
+            }
+        }
+
+        function handleFiles(file) {
+            // 验证文件类型
+            const validTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel'
+            ];
+
+            if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+                showError('请选择Excel文件 (.xlsx 或 .xls 格式)');
+                return;
+            }
+
+            // 重置界面
+            resetUI();
+            loading.style.display = 'block';
+
+            // 读取文件
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    processWorkbook(workbook);
+                } catch (err) {
+                    showError('文件读取失败: ' + err.message);
+                }
+            };
+            reader.onerror = function() {
+                showError('文件读取错误');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processWorkbook(workbook) {
+            analysisResults = [];
+            // 读取用户输入的阈值
+            gradeConfig.total = parseFloat(document.getElementById('totalScore').value) || 50;
+            gradeConfig.aMin = parseFloat(document.getElementById('aScore').value) || 45;
+            gradeConfig.bMin = parseFloat(document.getElementById('bScore').value) || 40;
+            gradeConfig.cMin = parseFloat(document.getElementById('cScore').value) || 30;
+
+            const { total, aMin, bMin, cMin } = gradeConfig;
+            
+            const sheetNames = workbook.SheetNames;
+
+            // 处理每个sheet页
+            sheetNames.forEach(sheetName => {
+                try {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (jsonData.length < 2) {
+                        console.warn(`Sheet '${sheetName}' 数据不足，跳过`);
+                        return;
+                    }
+
+                    // 获取表头
+                    const headers = jsonData[0].map(header => header ? header.toString().trim() : '');
+
+                    // 检查必要的列
+                    const requiredColumns = ['序号', '姓名', '分数'];
+                    const hasRequiredColumns = requiredColumns.every(col =>
+                        headers.includes(col)
+                    );
+
+                    if (!hasRequiredColumns) {
+                        console.warn(`Sheet '${sheetName}' 缺少必要的列，跳过`);
+                        return;
+                    }
+
+                    // 获取列索引
+                    const indexCol = headers.indexOf('序号');
+                    const nameCol = headers.indexOf('姓名');
+                    const scoreCol = headers.indexOf('分数');
+
+                    // 处理数据行
+                    const validRows = [];
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row && row.length > Math.max(indexCol, nameCol, scoreCol)) {
+                            // 名字不为空，并且分数有值才处理
+                            const name = row[nameCol] == null ? '' : String(row[nameCol]).trim();
+                            const score = parseFloat(row[scoreCol]);
+                            if (name !== '' && !isNaN(score)) {
+                                validRows.push({
+                                    index: row[indexCol],
+                                    name: row[nameCol],
+                                    score: score
+                                });
+                            }
+                        }
+                    }
+
+                    if (validRows.length === 0) {
+                        console.warn(`Sheet '${sheetName}' 没有有效数据，跳过`);
+                        return;
+                    }
+
+                    // 计算统计信息
+                    const totalPeople = validRows.length;
+                    const totalScore = validRows.reduce((sum, row) => sum + row.score, 0);
+                    const averageScore = totalScore / totalPeople;
+
+                    // 各等级人数统计
+                    const aGradeCount = validRows.filter(row => row.score >= aMin && row.score <= total).length;
+                    const bGradeCount = validRows.filter(row => row.score >= bMin && row.score < aMin).length;
+                    const cGradeCount = validRows.filter(row => row.score >= cMin && row.score < bMin).length;
+                    const failCount = validRows.filter(row => row.score < cMin).length;
+
+                    // 优秀率 (40分以上) 和及格率 (30分以上)
+                    const excellentCount = validRows.filter(row => row.score >= bMin).length;
+                    const passCount = validRows.filter(row => row.score >= cMin).length;
+
+                    const excellentRate = (excellentCount / totalPeople * 100).toFixed(2);
+                    const passRate = (passCount / totalPeople * 100).toFixed(2);
+
+                    analysisResults.push({
+                        sheetName: sheetName,
+                        totalPeople: totalPeople,
+                        totalScore: totalScore,
+                        averageScore: averageScore,
+                        aGradeCount: aGradeCount,
+                        bGradeCount: bGradeCount,
+                        cGradeCount: cGradeCount,
+                        failCount: failCount,
+                        excellentRate: excellentRate,
+                        passRate: passRate,
+                        rows: validRows 
+                    });
+
+                } catch (err) {
+                    console.error(`处理Sheet '${sheetName}' 时出错:`, err);
+                }
+            });
+
+            if (analysisResults.length === 0) {
+                showError('没有找到有效的sheet页数据，请检查文件格式');
+                return;
+            }
+
+            displayResults();
+        }
+
+        function displayResults() {
+            loading.style.display = 'none';
+            resultsSection.style.display = 'block';
+            copyBtn.disabled = false;
+
+            // 更新汇总表表头
+            const { total, aMin, bMin, cMin } = gradeConfig;
+            document.getElementById('summaryHeader').innerHTML = `
+            <th>班级</th>
+            <th>参考人数</th>
+            <th>总分</th>
+            <th>平均分</th>
+            <th class="a-grade">A[${aMin}-${total}]</th>
+            <th class="b-grade">B[${bMin}-${aMin})</th>
+            <th class="c-grade">C[${cMin}-${bMin})</th>
+            <th>不及格</th>
+            <th>优秀率</th>
+            <th>及格率</th>
+            `;
+
+            // 显示详细结果卡片
+            resultsGrid.innerHTML = '';
+            analysisResults.forEach(result => {
+                const card = document.createElement('div');
+                card.className = 'sheet-card';
+
+                card.innerHTML = `
+                    <div class="sheet-header">${result.sheetName}</div>
+                    <div class="stat-item">
+                        <span class="stat-label">参考人数:</span>
+                        <span class="stat-value">${result.totalPeople}人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总分:</span>
+                        <span class="stat-value">${Math.round(result.totalScore)}分</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">平均分:</span>
+                        <span class="stat-value">${result.averageScore.toFixed(2)}分</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">A[${aMin}-${total}]:</span>
+                        <span class="stat-value a-grade">${result.aGradeCount}人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">B[${bMin}-${aMin}):</span>
+                        <span class="stat-value b-grade">${result.bGradeCount}人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">C[${cMin}-${bMin}):</span>
+                        <span class="stat-value c-grade">${result.cGradeCount}人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">不及格:</span>
+                        <span class="stat-value fail">${result.failCount}人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">优秀率:</span>
+                        <span class="stat-value excellent">${result.excellentRate}%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">及格率:</span>
+                        <span class="stat-value pass">${result.passRate}%</span>
+                    </div>
+                `;
+
+                resultsGrid.appendChild(card);
+            });
+
+            // 显示汇总表格
+            const tbody = summaryTable.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            analysisResults.forEach(result => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${result.sheetName}</td>
+                    <td>${result.totalPeople}</td>
+                    <td>${Math.round(result.totalScore)}</td>
+                    <td>${result.averageScore.toFixed(2)}</td>
+                    <td class="a-grade">${result.aGradeCount}</td>
+                    <td class="b-grade">${result.bGradeCount}</td>
+                    <td class="c-grade">${result.cGradeCount}</td>
+                    <td class="fail">${result.failCount}</td>
+                    <td class="excellent">${result.excellentRate}%</td>
+                    <td class="pass">${result.passRate}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // 创建图表
+            createCharts();
+        }
+
+        function createCharts() {
+            // 清除之前的图表
+            chartsContainer.innerHTML = '';
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+
+            const classNames = analysisResults.map(result => result.sheetName);
+
+            // 1. 总分柱状图
+            createBarChart(
+                '总分表',
+                classNames,
+                analysisResults.map(result => Math.round(result.totalScore)),
+                '总分',
+                '#667eea',
+                'totalScoreChart'
+            );
+
+            // 2. 平均分柱状图
+            createBarChart(
+                '平均分表',
+                classNames,
+                analysisResults.map(result => parseFloat(result.averageScore.toFixed(2))),
+                '平均分',
+                '#48bb78',
+                'averageScoreChart'
+            );
+
+            // 3. ABC档分柱状图
+            createABCChart(classNames);
+
+            // 4. 优秀率及格率柱状图
+            createRateChart(classNames);
+
+            // 5. 不及格人数柱状图
+            createFailChart(classNames);
+        }
+
+        function createBarChart(title, labels, data, label, color, chartId) {
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            chartDiv.innerHTML = `
+                <div class="chart-title">${title}</div>
+                <div class="chart-wrapper">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+            `;
+            chartsContainer.appendChild(chartDiv);
+
+            const ctx = document.getElementById(chartId).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: color,
+                        borderColor: color,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            enabled: false
+                        },
+                        datalabels: {
+                            color: '#2d3748',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value) {
+                                return value;
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: label
+                            },
+                            grace: '10%'   // 在顶部多留5%的空间
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '班级'
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function createABCChart(labels) {
+            const { total, aMin, bMin, cMin } = gradeConfig;
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            chartDiv.innerHTML = `
+                <div class="chart-title">ABC档表</div>
+                <div class="chart-wrapper">
+                    <canvas id="abcChart"></canvas>
+                </div>
+            `;
+            chartsContainer.appendChild(chartDiv);
+
+            const ctx = document.getElementById('abcChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `A档[${aMin}-${total}]`,
+                            data: analysisResults.map(result => result.aGradeCount),
+                            backgroundColor: '#e53e3e',
+                            borderColor: '#e53e3e',
+                            borderWidth: 1
+                        },
+                        {
+                            label: `B档[${bMin}-${aMin})`,
+                            data: analysisResults.map(result => result.bGradeCount),
+                            backgroundColor: '#dd6b20',
+                            borderColor: '#dd6b20',
+                            borderWidth: 1
+                        },
+                        {
+                            label: `C档[${cMin}-${bMin})`,
+                            data: analysisResults.map(result => result.cGradeCount),
+                            backgroundColor: '#d69e2e',
+                            borderColor: '#d69e2e',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            enabled: true
+                        },
+                        datalabels: {
+                            color: '#2d3748',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value) {
+                                return value;
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 11
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '人数'
+                            },
+                            grace: '2%'   // 在顶部多留5%的空间
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '班级'
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function createRateChart(labels) {
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            chartDiv.innerHTML = `
+                <div class="chart-title">优秀率及格率表</div>
+                <div class="chart-wrapper">
+                    <canvas id="rateChart"></canvas>
+                </div>
+            `;
+            chartsContainer.appendChild(chartDiv);
+
+            const ctx = document.getElementById('rateChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '优秀率(%)',
+                            data: analysisResults.map(result => parseFloat(result.excellentRate)),
+                            backgroundColor: '#38a169',
+                            borderColor: '#38a169',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '及格率(%)',
+                            data: analysisResults.map(result => parseFloat(result.passRate)),
+                            backgroundColor: '#3182ce',
+                            borderColor: '#3182ce',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            enabled: true
+                        },
+                        datalabels: {
+                            color: '#2d3748',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value) {
+                                return value + '%';
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 11
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '百分比(%)'
+                            },
+                            grace: '5%'
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '班级'
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function createFailChart(labels) {
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            chartDiv.innerHTML = `
+                <div class="chart-title">不及格人数表</div>
+                <div class="chart-wrapper">
+                    <canvas id="failChart"></canvas>
+                </div>
+            `;
+            chartsContainer.appendChild(chartDiv);
+
+            const ctx = document.getElementById('failChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '不及格人数',
+                        data: analysisResults.map(result => result.failCount),
+                        backgroundColor: '#a0aec0',
+                        borderColor: '#718096',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            enabled: true
+                        },
+                        datalabels: {
+                            color: '#2d3748',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value) {
+                                return value;
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '人数'
+                            },
+                            ticks: {
+                                stepSize: 1   // 强制整数
+                            },
+                            grace: '2%'
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '班级'
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function copyResultsToClipboard() {
+            try {
+                const { total, aMin, bMin, cMin } = gradeConfig;
+                // 构建要复制的文本内容
+                let copyText = `班级\t参考人数\t总分\t平均分\tA[${aMin}-${total}]\tB[${bMin}-${aMin})\tC[${cMin}-${bMin})\t不及格\t优秀率\t及格率\n`;
+
+                analysisResults.forEach(result => {
+                    copyText += `${result.sheetName}\t${result.totalPeople}\t${Math.round(result.totalScore)}\t${result.averageScore.toFixed(2)}\t${result.aGradeCount}\t${result.bGradeCount}\t${result.cGradeCount}\t${result.failCount}\t${result.excellentRate}%\t${result.passRate}%\n`;
+                });
+
+                // 使用Clipboard API复制文本
+                navigator.clipboard.writeText(copyText).then(() => {
+                    success.style.display = 'block';
+                    showSuccess('汇总结果已复制到剪贴板！可以粘贴到Excel中');
+                }).catch(err => {
+                    // 如果Clipboard API不可用，使用备用方法
+                    const textArea = document.createElement('textarea');
+                    textArea.value = copyText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showSuccess('汇总结果已复制到剪贴板！可以粘贴到Excel中');
+                });
+            } catch (err) {
+                showError('复制失败: ' + err.message);
+            }
+        }
+
+        function resetAnalysis() {
+            resetUI();
+            fileInput.value = '';
+            analysisResults = [];
+        }
+
+        function showError(message) {
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            error.textContent = message;
+        }
+
+        function showSuccess(message) {
+            success.style.display = 'block';
+            success.textContent = message;
+            setTimeout(() => {
+                success.style.display = 'none';
+            }, 3000);
+        }
+
+        function resetUI() {
+            loading.style.display = 'none';
+            error.style.display = 'none';
+            success.style.display = 'none';
+            resultsSection.style.display = 'none';
+            resultsGrid.innerHTML = '';
+            summaryTable.querySelector('tbody').innerHTML = '';
+            chartsContainer.innerHTML = '';
+            copyBtn.disabled = true;
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            resetUI();
+        });
+
+        function updateGradeConfig() {
+            // 重新读取输入框的值
+            gradeConfig.total = parseFloat(document.getElementById('totalScore').value) || 50;
+            gradeConfig.aMin  = parseFloat(document.getElementById('aScore').value) || 45;
+            gradeConfig.bMin  = parseFloat(document.getElementById('bScore').value) || 40;
+            gradeConfig.cMin  = parseFloat(document.getElementById('cScore').value) || 30;
+
+            // 如果已有分析结果，就立即重新刷新展示
+            if (analysisResults.length > 0) {
+                recomputeGradesForAll();
+                displayResults();
+                showSuccess(`分档设置已更新：A[${gradeConfig.aMin}-${gradeConfig.total}]，B[${gradeConfig.bMin}-${gradeConfig.aMin})，C[${gradeConfig.cMin}-${gradeConfig.bMin})`);
+            } else {
+                showSuccess('分档设置已更新，下次分析时生效');
+            }
+        }
+
+        function recomputeGradesForAll() {
+    const { total, aMin, bMin, cMin } = gradeConfig;
+
+    analysisResults = analysisResults.map(item => {
+            // item.rows 是 processWorkbook 保存的原始有效行数组
+            const rows = item.rows || [];
+
+            const totalPeople = rows.length;
+            const totalScore = rows.reduce((sum, r) => sum + r.score, 0);
+            const averageScore = totalPeople > 0 ? totalScore / totalPeople : 0;
+
+            const aGradeCount = rows.filter(r => r.score >= aMin && r.score <= total).length;
+            const bGradeCount = rows.filter(r => r.score >= bMin && r.score < aMin).length;
+            const cGradeCount = rows.filter(r => r.score >= cMin && r.score < bMin).length;
+            const failCount   = rows.filter(r => r.score < cMin).length;
+
+            const excellentCount = rows.filter(r => r.score >= bMin).length;
+            const passCount      = rows.filter(r => r.score >= cMin).length;
+
+            const excellentRate = totalPeople > 0 ? (excellentCount / totalPeople * 100).toFixed(2) : '0.00';
+            const passRate      = totalPeople > 0 ? (passCount / totalPeople * 100).toFixed(2) : '0.00';
+
+            return {
+                ...item,
+                totalPeople,
+                totalScore,
+                averageScore,
+                aGradeCount,
+                bGradeCount,
+                cGradeCount,
+                failCount,
+                excellentRate,
+                passRate
+                // keep item.rows intact
+            };
+        });
+    }
+    </script>
+</body>
+</html>
